@@ -7,12 +7,12 @@ const parkingSpots = {
 };
 
 
-exports.getAvailability = () => parkingSpots;
+exports.getAvailableSpots = () => parkingSpots;
 
 exports.parkVehicle = (vehicleType) => {
   if (parkingSpots[vehicleType] > 0) {
     parkingSpots[vehicleType] -= 1;
-    return { success: true, message: `${vehicleType} parked successfully` };
+    return { success: true, message: `${vehicleType} parked successfully, slot remainingg: ${parkingSpots[vehicleType]}` };
   }
   return { success: false, message: `No parking spots available for ${vehicleType}` };
 }

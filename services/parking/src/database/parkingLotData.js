@@ -4,10 +4,36 @@ const ParkingFloor = require('../models/ParkingFloor');
 const parkingLot = new ParkingLot('Main Lot');
 
 const floorConfig = [
-  { level: 1, spots: [{ type: 'compact', count: 10 }, { type: 'large', count: 10 }] },
-  { level: 2, spots: [{ type: 'compact', count: 10 }, { type: 'large', count: 10 }] },
-  { level: 3, spots: [{ type: 'compact', count: 20 }, { type: 'large', count: 30 }] },
-]
+  {
+    level: 1,
+    spots: [
+      { type: 'compact', count: 10 },      // Supports small cars
+      { type: 'large', count: 5 },         // Supports trucks, vans, and large vehicles
+      { type: 'handicapped', count: 2 },   // Reserved for vehicles with handicapped tags
+      { type: 'ev', count: 3 },            // EV charging stations
+      { type: 'motorcycle', count: 7 },    // Specifically for motorcycles
+    ],
+  },
+  {
+    level: 2,
+    spots: [
+      { type: 'compact', count: 15 },      // More compact spaces
+      { type: 'handicapped', count: 1 },
+      { type: 'ev', count: 5 },            // Larger EV allocation on this floor
+      { type: 'motorcycle', count: 10 },   // Motorcycle spots only
+    ],
+  },
+  {
+    level: 3,
+    spots: [
+      { type: 'compact', count: 20 },      // Compact spaces only
+      { type: 'handicapped', count: 2 },
+      { type: 'ev', count: 6 },
+      { type: 'motorcycle', count: 5 },
+    ],
+  },
+];
+
 
 // Initialize floors based on config
 floorConfig.forEach(({ level, spots }) => {

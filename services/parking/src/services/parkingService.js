@@ -1,4 +1,5 @@
 const Vehicle = require('../models/Vehicle');
+const ParkingSpot = require('../models/ParkingSpot');
 
 class ParkingService {
   constructor(parkingLot) {
@@ -22,11 +23,12 @@ class ParkingService {
   parkVehicle(vehicleId, type) {
     const vehicle = new Vehicle(vehicleId, type);
     const spot = this.parkingLot.findSpot(type);
-    
-    if (!spot) {
+
+
+    if (spot.success === false) {
       return {
         success: false,
-        message: `No available spot from for the vehicle type ${type}`
+        message: `No available spot for the vehicle type ${type}`
       }
     }
 
@@ -34,7 +36,7 @@ class ParkingService {
       spot.occupySpot(vehicle);
       return {
         success: true,
-        message: `Vehicle ${vehicleId} parked at spot ${spot.id}`,
+        message: `Vehicle ${vehicleId} park at spot ${spot.id}`,
         spotId: spot.id,
         level: spot.level
       }

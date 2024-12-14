@@ -10,6 +10,11 @@ Design a high-level architecture for the parking lot system, highlighting compon
 
 ###  Describe how you would handle concurrent transactions, payment processing, and real-time updates of parking spot availability.
 - Use RabbitMQ to queue the transactions
+- By using RabbitMQ, we can sequentialize all parking and payment requests.
+In this architecture, the API server routes requests to a AMQP queue to ensure that they are processed in the order that they arrive.
+The benefits are:
+1) Retry Mechanism: if a transaction (i.e parking or payment request) fails to succeed, the transaction can be qeued for another attempt.
+2) Scalability: By decoupling the consumers and producers, we can scale the individual services independently. For example, for the parking service, docker can be used to scale the number of instances to process multiple parking attempts in parallel.
 - Docker to scale the number of instances processing the transactions
 - Subscribe to a separate notification service that polls `parking` for availability
 

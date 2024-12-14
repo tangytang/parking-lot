@@ -9,7 +9,7 @@ class ParkingSpot {
 
   occupySpot(vehicle) {
     if (this.isOccupied) {
-      throw new Error('Parking Spot is already occupied');
+      throw new Error(`Parking Spot ${this.id} is already occupied`);
     }
     this.vehicle = vehicle;
     this.isOccupied = true;

@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - 5672:5672
+      - 15672:15672
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+volumes:
+  rabbitmq_data:
+
+  # parking-service:
+  #   build:
+  #     context: ./parking-service
+  #   container_name: parking-service
+  #   ports:
+  #     - "3001:3001"
+  #   environment:
+  #     RABBITMQ_URL: amqp://admin:admin@rabbitmq:5672
+  #   depends_on:
+  #     - rabbitmq
+
+  # payment-service:
+  #   build:
+  #     context: ./payment-service
+  #   container_name: payment-service
+  #   ports:
+  #     - "3002:3002"
+  #   environment:
+  #     RABBITMQ_URL: amqp://admin:admin@rabbitmq:5672
+  #   depends_on:
+  #     - rabbitmq

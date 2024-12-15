@@ -86,7 +86,6 @@ class ParkingService {
 
             // Find and occupy parking spot
             const spot = this.parkingLot.findSpot(transaction.type);
-            if (!spot.success) throw new Error(`Failed to park ${transaction.vehicleId}. No available spot for vehicle type ${transaction.type}`);
 
             spot.occupySpot(new Vehicle(transaction.vehicleId, transaction.type));
             console.log(`${workerId} parked vehicle ${transaction.vehicleId} at spot ${spot.id}`);
@@ -95,6 +94,7 @@ class ParkingService {
             workerChannel.ack(msg);
           } catch (error) {
             console.error(`${workerId} failed to process transaction: ${error.message}`);
+
             // Requeue message for retry
             workerChannel.nack(msg, false, true);
           }

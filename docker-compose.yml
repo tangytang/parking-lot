@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   rabbitmq:
     image: rabbitmq:3-management
@@ -24,6 +22,18 @@ services:
     container_name: payment-service
     ports:
       - "3002:3002"
+    environment:
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  parking:
+    build:
+      context: ./services/parking
+    container_name: parking-service
+    ports:
+      - "3001:3001"
     environment:
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
     depends_on:

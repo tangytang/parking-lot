@@ -1,7 +1,8 @@
 const ParkingService = require('../services/parkingService');
 const parkingLot = require('../database/parkingLotData')
+const amqpUrl = process.env.RABBITMQ_URL || 'amqp://localhost:15672';
 
-const parkingService = new ParkingService(parkingLot);
+const parkingService = new ParkingService(parkingLot, amqpUrl);
 
 (async () => {
   try {

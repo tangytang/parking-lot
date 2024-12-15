@@ -8,7 +8,7 @@ const floorConfig = [
     level: 1,
     spots: [
       { type: 'compact', count: 10 },      // Supports small cars
-      { type: 'large', count: 10000 },         // Supports trucks, vans, and large vehicles on first floor to minimise turns
+      { type: 'large', count: 50 },         // Supports trucks, vans, and large vehicles on first floor to minimise turns
       { type: 'handicapped', count: 2 },   // Reserved for vehicles with handicapped tags
       { type: 'ev', count: 3 },            // EV charging stations
       { type: 'motorcycle', count: 7 },    // Specifically for motorcycles

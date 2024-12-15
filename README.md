@@ -1,53 +1,87 @@
-Please take your time to carefully read and understand the provided system requirements.
+# Real-Time Parking Lot Project
 
-Design a high-level architecture for the parking lot system, highlighting components, interactions, and data flow.
+### Design a high-level architecture for the parking lot system, highlighting components, interactions, and data flow.
+
+![alt text](image-1.png)
 
 ### Propose data structures and classes, explaining their relationships and responsibilities.
 
-- Payment: handles payments
-- Parking: checks availability and manages parking space.
-- Notification: notifies users with real-time updates of parking spot availability for each level. (continuous polling) Integrates with the physical interface of the parking management system. Can push updates to web console as well.
+The **Vehicle** class captures the type of vehicle, while the **ParkingSpot** class provides methods for occupying a parking spot with a vehicle. The **ParkingFloor** class includes methods to search for available parking lots, streamlining parking allocation. These classes are organized under the `/services/parking/src/models` directory. Similarly, the **Payment** class, located in `/services/payment/src/models`, contains methods to track the payment status of vehicles, ensuring accurate and real-time payment processing.
 
 ### Describe how you would handle concurrent transactions, payment processing, and real-time updates of parking spot availability.
 
-- Use RabbitMQ to queue the transactions
-- By using RabbitMQ, we can sequentialize all parking and payment requests.
-  In this architecture, the API server routes requests to a AMQP queue to ensure that they are processed in the order that they arrive.
-  The benefits are:
+To handle concurrent transactions, payment processing, and real-time updates of parking spot availability, the system leverages RabbitMQ, Docker, and WebSockets for efficient and scalable communication and processing.
 
-1. Retry Mechanism: if a transaction (i.e parking or payment request) fails to succeed, the transaction can be qeued for another attempt.
-2. Scalability: By decoupling the consumers and producers, we can scale the individual services independently. For example, for the parking service, docker can be used to scale the number of instances to process multiple parking attempts in parallel.
+RabbitMQ is employed to queue all transactions, ensuring that parking and payment requests are processed in the order they arrive. This architecture decouples producers (API servers) and consumers (services), enabling the system to handle transactions sequentially while providing several key benefits:
 
-- Docker to scale the number of instances processing the transactions
-- Subscribe to a separate notification service that polls `parking` for availability
+1. **Retry Mechanism**: If a transaction, such as a parking or payment request, fails, RabbitMQ can requeue the transaction for another processing attempt, ensuring reliability.
+2. **Scalability**: By decoupling producers and consumers, RabbitMQ allows individual services to scale independently. For instance, the parking service can use Docker to scale the number of instances, enabling multiple parking requests to be processed in parallel without impacting other services.
+
+Docker further enhances scalability by enabling the dynamic creation of service instances. For example, the parking service can be scaled up or down based on the length of the RabbitMQ queue, ensuring optimal performance during peak loads.
+
+WebSockets are integrated into the frontend (React) to provide real-time updates on payment, parking, and availability statuses. This ensures that users receive immediate feedback, such as confirmation of parking or payment, and up-to-date information about available parking spots.
+
+This approach ensures a robust, scalable, and responsive system capable of handling high volumes of transactions efficiently.
 
 ### Outline the steps you would take to ensure the reliability, security, and scalability of the parking system.
 
-- Adopt Microservice architecture to ensure that each service adopts a single repsonsibility
-- Secure service behind an API Gateway, and include an auth layer there
-- Introduce queuing system with Rabbiq MQ: Horizontal Scaling, Able to Queue hundreds of transactions so that parking service not dependent on payment service to succeed, asynchronous processing of payments using RabbitMQ.
+1. **Adopt Microservices Architecture**: Implement a microservices-based design to ensure each service adheres to the principle of single responsibility. This modular approach enhances maintainability, fault isolation, and the ability to scale individual components independently.
 
-### Discuss how you would structure the parking system as microservices. Explain the benefits of using microservices for this scenario and how communication between microservices would be managed.
+2. **Secure API Gateway**: Place all services behind an API Gateway to act as a single entry point for external requests. Incorporate robust authentication and authorization mechanisms, such as access tokens, to secure routes and protect sensitive operations.
 
-- service failures not dependent on one another
-- you can scale a particular service without scaling the rest of the services as in a monolithic architecture, therefore saving costs.
-- you can adopt different scaling methods. Heavier compute applications can have a more aggressive scaling strategy.
-- Communication to be handled by a central queuing system: RabbitMQ
+3. **Leverage RabbitMQ for Asynchronous Processing**:
+   - Introduce a queuing system using RabbitMQ to handle transactions reliably and decouple services.
+   - Enable horizontal scaling by deploying multiple consumer instances to process transactions in parallel, ensuring scalability during peak loads.
+   - Allow the parking service to operate independently of the payment service by queuing transactions, ensuring that a failed payment does not block parking operations.
+   - Process payments asynchronously to optimize throughput while maintaining transaction integrity.
+
+By combining these approaches, the parking system can achieve high reliability, strong security, and the scalability needed to handle fluctuating demand efficiently.
 
 ### Develop a set of test cases that cover various scenarios and aspects of the system. Include unit tests, integration tests, and any other relevant tests that ensure the correctness and robustness of the system.
 
+To ensure the correctness and robustness of the system, test cases have been developed and organized within their respective service directories, such as `/services/parking/src/test` and `/services/payment/src/test`. They are automatically executed as part of the Docker Compose process defined in the `docker-compose.yml` file.
+
 ### Describe how you would containerize the microservices using a technology like Docker. Explain the advantages of containerization and how it would simplify deployment and scaling.
 
-- Developer experience - consistent environment for testing and troubleshooting
-- Able to scale the # of containers to improve service reliability
-- Infrastructure as code to document that exact working environemnt
-- Allow roll-backs to previous working environment
-- Can be used to test new changes (for example, some containers still using older versions of the code.)
+To containerize the microservices, Docker is used to package each service, along with its dependencies, into isolated and portable containers. Each service (e.g., parking, payment, and dashboard) is defined with its own Dockerfile, specifying its runtime environment, dependencies, and startup commands. These containers are then orchestrated using Docker Compose to ensure smooth inter-service communication and manageability
 
-## Instructions
+1. **Consistent Development Environment**:
 
--Build environment with docker `docker compose up --build`. Build ensures that images are built from scratch to avoid any errors
+   - Docker provides a consistent runtime environment across development, testing, and production, eliminating the "it works on my machine" problem. This ensures seamless testing and troubleshooting for developers.
 
-### Expected Results
+2. **Scalability**:
 
-### Running Tests
+   - Containers can be scaled up or down to meet demand by adjusting the number of instances for each service. For example, the parking service can be scaled horizontally to handle high volumes of parking transactions.
+
+3. **Infrastructure as Code**:
+
+   - Dockerfiles and `docker-compose.yml` serve as documentation for the exact working environment of the system. This allows reproducibility and ensures new team members can set up the system quickly.
+
+4. **Rollbacks**:
+
+   - Docker images enable easy rollbacks to previous working versions of the environment, minimizing downtime during deployment issues or unforeseen bugs.
+
+5. **Version Testing**:
+   - Different versions of services can coexist in separate containers. For example, some containers can use older versions of the payment service while testing new updates in others, ensuring a smooth transition to production.
+
+### Steps to Run and Test the System
+
+![alt text](image-2.png)
+
+1. **Start the System**:  
+   Navigate to the root directory and execute the following command to build and start all services:
+
+   ```bash
+   docker compose up --build
+   ```
+
+2. **Run Test Cases**:  
+   Allow Docker to complete the automated test cases. As the test cases execute, the parking availability will update dynamically (e.g., reducing as parking spots are occupied).
+
+3. **Test the Parking Service**:  
+   Input vehicle details into the **Parking Service** form and observe how the **Parking Availability** updates in real time.
+
+4. **Test the Payment Service**:  
+   Enter payment details into the **Payment Service** form and ensure the system processes the payment correctly, reflecting updates in the dashboard.
+
+By following these steps, you can verify the system's end-to-end functionality and observe real-time updates to parking availability and payment status.

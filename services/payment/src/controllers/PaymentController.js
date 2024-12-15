@@ -1,6 +1,7 @@
 const PaymentService = require('../services/PaymentService');
+const amqpUrl = process.env.RABBITMQ_URL || 'amqp://localhost:15672';
 
-const paymentService = new PaymentService();
+const paymentService = new PaymentService(amqpUrl);
 
 (async () => {
   try {

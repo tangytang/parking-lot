@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   rabbitmq:
@@ -7,30 +7,28 @@ services:
     ports:
       - 5672:5672
       - 15672:15672
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  payment:
+    build:
+      context: ./services/payment
+    container_name: payment-service
+    ports:
+      - "3002:3002"
+    environment:
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
 
 volumes:
   rabbitmq_data:
-
-  # parking-service:
-  #   build:
-  #     context: ./parking-service
-  #   container_name: parking-service
-  #   ports:
-  #     - "3001:3001"
-  #   environment:
-  #     RABBITMQ_URL: amqp://admin:admin@rabbitmq:5672
-  #   depends_on:
-  #     - rabbitmq
-
-  # payment-service:
-  #   build:
-  #     context: ./payment-service
-  #   container_name: payment-service
-  #   ports:
-  #     - "3002:3002"
-  #   environment:
-  #     RABBITMQ_URL: amqp://admin:admin@rabbitmq:5672
-  #   depends_on:
-  #     - rabbitmq

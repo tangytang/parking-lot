@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   rabbitmq:
     image: rabbitmq:3-management
@@ -27,6 +29,12 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:3002"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   parking:
     build:
@@ -39,6 +47,34 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:3001"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  payment-tests:
+    build:
+      context: ./services/payment
+    container_name: payment-tests
+    environment:
+      API_HOST: payment
+    depends_on:
+      payment:
+        condition: service_healthy
+    command: ["npm", "test"]
+
+  parking-tests:
+    build:
+      context: ./services/parking
+    container_name: parking-tests
+    environment:
+      API_HOST: parking
+    depends_on:
+      parking:
+        condition: service_healthy
+    command: ["npm", "test"]
 
 volumes:
   rabbitmq_data:

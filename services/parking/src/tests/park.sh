@@ -1,7 +1,8 @@
 #!/bin/sh
 
-# API endpoint for parking service
-API_URL="http://localhost:3001/api/parking/park"
+# Set the API URL. Use the `API_HOST` environment variable if available; default to "localhost".
+API_HOST="${API_HOST:-localhost}"
+API_URL="http://$API_HOST:3001/api/parking/park"
 
 # List of vehicle requests (newline-separated)
 vehicles='

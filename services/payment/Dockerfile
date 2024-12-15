@@ -10,9 +10,10 @@ RUN apk add --no-cache curl
 # Step 4: Copy package.json and package-lock.json for dependency installation
 COPY package*.json ./
 
-# Step 5: Install dependencies, including amqplib
-RUN npm install --production && npm install amqplib && npm install cors
-
+# Step 5: Install only production dependencies, followed by additional required packages
+RUN npm ci --only=production && \
+    npm install amqplib cors socket.io --no-save
+    
 # Step 6: Copy the rest of the application source code
 COPY . .
 

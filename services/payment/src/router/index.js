@@ -1,9 +1,14 @@
 const express = require('express');
-const router = express.Router();
-const { processPayment } = require('../controllers/PaymentController');
+const { createProcessPaymentHandler } = require('../controllers/PaymentController');
 
-router.get('/', (req, res) => res.send('Payment service is running!@@'));
-router.post('/process', processPayment);
+module.exports = (paymentService) => {
+  const router = express.Router();
 
+  // Define the processPayment route
+  router.post('/process', createProcessPaymentHandler(paymentService));
 
-module.exports = router;
+  // Health check
+  router.get('/', (req, res) => res.send('Payment Service is running!'));
+
+  return router;
+};

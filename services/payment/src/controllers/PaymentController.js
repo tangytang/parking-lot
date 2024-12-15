@@ -1,28 +1,17 @@
-const PaymentService = require('../services/PaymentService');
-const amqpUrl = process.env.RABBITMQ_URL || 'amqp://localhost:15672';
+exports.createProcessPaymentHandler = (paymentService) => {
+  return async (req, res) => {
+    const { amount, vehicleId, paymentMethod } = req.body;
 
-const paymentService = new PaymentService(amqpUrl);
+    if (!amount || isNaN(amount) || amount <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid amount' });
+    }
 
-(async () => {
-  try {
-    await paymentService.initializeRabbit();
-
-  } catch (error) {
-    console.error('Failed to start parking service:', error);
-  }
-})();
-
-exports.processPayment = (req, res) => {
-  let { amount, vehicleId, paymentMethod } = req.body;
-
-  amount = parseFloat(amount);
-
-  if (isNaN(amount || amount <= 0)) {
-    return res.status(400).json({ success: false, message: 'Invalid amount' });
-  }
-
-  const result = paymentService.enqueuePayment(vehicleId, amount, paymentMethod);
-
-  return res.status(result.json ? 200 : 400).json(result);
-}
-
+    try {
+      const result = await paymentService.enqueuePayment(vehicleId, parseFloat(amount), paymentMethod);
+      return res.status(result.success ? 200 : 400).json(result);
+    } catch (error) {
+      console.error('Failed to process payment:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  };
+};

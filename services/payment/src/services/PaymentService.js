@@ -1,35 +1,29 @@
-const amqp = require('amqplib');
-const Payment = require('../models/Payment');
-
 class PaymentService {
-  constructor(amqpUrl) {
-    this.payments = [];
-    this.amqpUrl = amqpUrl;
-    this.channel = null;
-    this.queue = 'payment_channel';
-    this.activeWorkers = new Set();
-    this.maxWorkers = 4;
+  constructor(amqpUrl, io) {
+    this.amqpUrl = amqpUrl; // RabbitMQ URL
+    this.channel = null; // RabbitMQ channel
+    this.queue = 'payment_channel'; // RabbitMQ queue name
+    this.io = io; // WebSocket instance
+    this.activeWorkers = new Set(); // Track active workers
+    this.maxWorkers = 4; // Maximum number of workers
   }
 
-  // Initialize RabbitMQ connection and channel
+  // Initialize RabbitMQ connection and set up scaling
   async initializeRabbit() {
     try {
-      const connection = await amqp.connect(this.amqpUrl);
+      const connection = await require('amqplib').connect(this.amqpUrl);
       this.channel = await connection.createChannel();
       await this.channel.assertQueue(this.queue, { durable: true });
       console.log(`RabbitMQ channel created for queue: ${this.queue}`);
 
-      // Periodically check the queue length and scale workers
-      setInterval(async () => {
-        await this.scaleWorkers(connection);
-      }, 5000);
+      // Start worker scaling logic
+      setInterval(() => this.scaleWorkers(connection), 5000);
     } catch (error) {
       console.error('Failed to initialize RabbitMQ:', error);
-      throw error;
     }
   }
 
-  // Scale workers based on queue length
+  // Scale workers based on the queue length
   async scaleWorkers(connection) {
     try {
       const queueState = await this.channel.checkQueue(this.queue);
@@ -71,14 +65,12 @@ class PaymentService {
     });
   }
 
-  // Create a new worker
+  // Create a new worker to process messages
   async createWorker(connection, workerId) {
     try {
       const workerChannel = await connection.createChannel();
       await workerChannel.assertQueue(this.queue, { durable: true });
-
-      // Set prefetch to 1 to distribute messages fairly
-      workerChannel.prefetch(1);
+      workerChannel.prefetch(1); // Fair distribution of messages
 
       console.log(`${workerId} is waiting for messages in queue "${this.queue}"`);
 
@@ -88,28 +80,33 @@ class PaymentService {
           console.log(`Worker ${workerId} processing payment for vehicle ${transaction.vehicleId}...`);
 
           try {
-            // Simulate processing delay
-            await new Promise((resolve) => setTimeout(resolve, 5000));
+            await new Promise((resolve) => setTimeout(resolve, 5000)); // Simulate delay
 
-            const result = this.processPayment(transaction.vehicleId, transaction.amount, transaction.paymentMethod);
+            const result = this.processPayment(
+              transaction.vehicleId,
+              transaction.amount,
+              transaction.paymentMethod
+            );
 
-            console.log(`Worker ${workerId} processed payment: ${result.message}`);
+            // Broadcast the result to WebSocket clients
+            if (this.io) {
+              this.io.emit('paymentUpdate', { transaction, result });
+              console.log(`Worker ${workerId} broadcasted result:`, { transaction, result });
+            }
 
-            // Acknowledge the message upon success
-            workerChannel.ack(msg);
+            workerChannel.ack(msg); // Acknowledge the message
           } catch (error) {
             console.error(`Worker ${workerId} failed to process payment:`, error.message);
-            workerChannel.nack(msg, false, true); // Optionally requeue the message
+            workerChannel.nack(msg, false, true); // Requeue the message
           }
         }
       });
     } catch (error) {
       console.error(`Failed to create worker ${workerId}:`, error);
-      throw error;
     }
   }
 
-  // Producer: Enqueue payment transaction
+  // Enqueue a payment transaction
   async enqueuePayment(vehicleId, amount, paymentMethod) {
     const transaction = { vehicleId, amount, paymentMethod };
 
@@ -127,16 +124,11 @@ class PaymentService {
     }
   }
 
-  // Simulate processing payment
+  // Simulate processing a payment
   processPayment(vehicleId, amount, paymentMethod) {
-    const payment = new Payment(amount, vehicleId, paymentMethod);
-    payment.completePayment();
-    this.payments.push(payment);
-
     return {
       success: true,
-      paymentId: payment.paymentId,
-      message: 'Payment processed successfully!',
+      message: `Payment of ${amount} for vehicle ${vehicleId} processed using ${paymentMethod}`,
     };
   }
 }

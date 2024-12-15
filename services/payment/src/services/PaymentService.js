@@ -91,7 +91,7 @@ class PaymentService {
             // Broadcast the result to WebSocket clients
             if (this.io) {
               this.io.emit('paymentUpdate', { transaction, result });
-              console.log(`Worker ${workerId} broadcasted result:`, { transaction, result });
+
             }
 
             workerChannel.ack(msg); // Acknowledge the message

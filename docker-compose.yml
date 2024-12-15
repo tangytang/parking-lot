@@ -76,5 +76,26 @@ services:
         condition: service_healthy
     command: ["npm", "test"]
 
+  dashboard:
+    build:
+      context: ./services/dashboard
+    container_name: dashboard-service
+    ports:
+      - "3000:3000" # Map the dashboard to port 3000
+    environment:
+      REACT_APP_PAYMENT_API: http://payment:3002/api/payment
+      REACT_APP_PARKING_API: http://parking:3001/api/parking
+    depends_on:
+      payment:
+        condition: service_healthy
+      parking:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
 volumes:
   rabbitmq_data:

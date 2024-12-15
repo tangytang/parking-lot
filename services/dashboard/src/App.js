@@ -4,6 +4,7 @@ import axios from "axios";
 import "./App.css";
 
 function App() {
+  const [parkingAvailability, setParkingAvailability] = useState({});
   const [parkingData, setParkingData] = useState([]);
   const [paymentData, setPaymentData] = useState([]);
   const [vehicleId, setVehicleId] = useState("");
@@ -11,29 +12,46 @@ function App() {
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
 
-  const [modalVisible, setModalVisible] = useState(false); // Modal state
-  const [modalContent, setModalContent] = useState(null); // Modal content
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalContent, setModalContent] = useState(null);
+
+  // Fetch parking availability
+  const fetchParkingAvailability = async () => {
+    try {
+      const response = await axios.get("http://localhost:3001/api/parking/availability");
+      setParkingAvailability(response.data.data || {});
+    } catch (error) {
+      console.error("Failed to fetch parking availability:", error);
+    }
+  };
 
   useEffect(() => {
-    const socket = io("http://localhost:3002");
+    // Initial fetch for parking availability
+    fetchParkingAvailability();
 
-    socket.on("parkingUpdate", (data) => {
+    // Setup WebSocket connections
+    const paymentsocket = io("http://localhost:3002");
+    const parkingsocket = io("http://localhost:3001");
+
+    parkingsocket.on("parkingUpdate", (data) => {
       setParkingData((prev) => [...prev, data]);
+      fetchParkingAvailability(); // Update availability on parking changes
     });
 
-    socket.on("paymentUpdate", (data) => {
+    paymentsocket.on("paymentUpdate", (data) => {
       setPaymentData((prev) => [...prev, data]);
     });
 
     return () => {
-      socket.disconnect();
+      paymentsocket.disconnect();
+      parkingsocket.disconnect();
     };
   }, []);
 
   const handleParkingSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post("http://localhost:3002/api/parking/park", {
+      const response = await axios.post("http://localhost:3001/api/parking/park", {
         vehicleId,
         vehicleType,
       });
@@ -82,6 +100,22 @@ function App() {
       <nav className="navbar">
         <h1>Real-Time Parking Dashboard</h1>
       </nav>
+      <main className="content">
+
+        <h2>Parking Availability</h2>
+        {Object.entries(parkingAvailability).map(([level, spots]) => (
+          <section className="section">
+            <strong>Level {level}</strong>{" "}
+            <div className="">
+              {Object.entries(spots).map(([type, count]) => (
+                <span key={type}>
+                  {type}: {count}{" "}
+                </span>
+              ))}
+            </div>
+          </section>
+        ))}
+      </main>
       <main className="content">
         <section className="section">
           <h2>Parking Service</h2>
@@ -135,19 +169,21 @@ function App() {
         </section>
       </main>
       <footer className="footer">
-        <p>© 2024 Real-Time Parking Dashboard by Ivan</p>
+        <p>© 2024 Real-Time Parking Dashboard by TangyTang</p>
       </footer>
 
-      {modalVisible && (
-        <div className="modal">
-          <div className="modal-content">
-            <h2>{modalContent.title}</h2>
-            <p>{modalContent.message}</p>
-            <button onClick={() => setModalVisible(false)}>Close</button>
+      {
+        modalVisible && (
+          <div className="modal">
+            <div className="modal-content">
+              <h2>{modalContent.title}</h2>
+              <p>{modalContent.message}</p>
+              <button onClick={() => setModalVisible(false)}>Close</button>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 }
 

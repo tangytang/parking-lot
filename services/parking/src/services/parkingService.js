@@ -2,13 +2,14 @@ const amqp = require('amqplib');
 const Vehicle = require('../models/Vehicle');
 
 class ParkingService {
-  constructor(parkingLot, amqpUrl) {
+  constructor(parkingLot, amqpUrl, io) {
     this.parkingLot = parkingLot;
     this.amqpUrl = amqpUrl;
     this.channel = null;
+    this.io = io;
     this.queue = 'parkingtransactions';
-    this.activeWorkers = new Set(); // Track active workers
-    this.maxWorkers = 4; // Set an upper limit for scaling
+    this.activeWorkers = new Set();
+    this.maxWorkers = 4;
   }
 
   // Initialize RabbitMQ connection and channel
@@ -19,7 +20,6 @@ class ParkingService {
       await this.channel.assertQueue(this.queue, { durable: true });
       console.log(`RabbitMQ connected. Queue "${this.queue}" is ready.`);
 
-      // Periodically check the queue length and scale workers
       setInterval(async () => {
         const queueState = await this.channel.checkQueue(this.queue);
         const queueLength = queueState.messageCount;
@@ -31,22 +31,20 @@ class ParkingService {
 
         console.log(`Current workers: ${currentWorkers}, Desired workers: ${desiredWorkers}`);
 
-        // Scale up or down workers
         if (desiredWorkers > currentWorkers) {
           this.scaleUpWorkers(desiredWorkers - currentWorkers, connection);
         } else if (desiredWorkers < currentWorkers) {
           this.scaleDownWorkers(currentWorkers - desiredWorkers);
         }
-      }, 5000); // Check every 5 seconds
+      }, 5000);
     } catch (error) {
       console.error('Failed to initialize RabbitMQ:', error);
       throw error;
     }
   }
 
-  // Scale up by spawning new workers
   scaleUpWorkers(count, connection) {
-    for (let i = 0; i < this.maxWorkers; i++) {
+    for (let i = 0; i < count; i++) {
       const workerId = `worker-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
       console.log(`Spawning new worker: ${workerId}`);
       this.activeWorkers.add(workerId);
@@ -54,23 +52,18 @@ class ParkingService {
     }
   }
 
-  // Scale down by removing workers
   scaleDownWorkers(count) {
     const workersToRemove = Array.from(this.activeWorkers).slice(0, count);
     workersToRemove.forEach((workerId) => {
       console.log(`Stopping worker: ${workerId}`);
       this.activeWorkers.delete(workerId);
-      // No explicit stop logic needed as the worker loop will naturally finish
     });
   }
 
-  // Create a new worker
   async createWorker(connection, workerId) {
     try {
       const workerChannel = await connection.createChannel();
       await workerChannel.assertQueue(this.queue, { durable: true });
-
-      // Set prefetch limit to 1 to distribute messages fairly
       workerChannel.prefetch(1);
 
       console.log(`${workerId} is ready to consume messages.`);
@@ -81,21 +74,18 @@ class ParkingService {
           console.log(`${workerId} processing transaction: ${transaction.vehicleId}, Type: ${transaction.type}`);
 
           try {
-            // Simulate processing delay
             await new Promise((resolve) => setTimeout(resolve, 5000));
-
-            // Find and occupy parking spot
             const spot = this.parkingLot.findSpot(transaction.type);
+
+            if (!spot) throw new Error(`No available spot for type ${transaction.type}`);
 
             spot.occupySpot(new Vehicle(transaction.vehicleId, transaction.type));
             console.log(`${workerId} parked vehicle ${transaction.vehicleId} at spot ${spot.id}`);
 
-            // Acknowledge message upon success
+            this.io.emit('parkingUpdate', { transaction, spot });
             workerChannel.ack(msg);
           } catch (error) {
             console.error(`${workerId} failed to process transaction: ${error.message}`);
-
-            // Requeue message for retry
             workerChannel.nack(msg, false, true);
           }
         }
@@ -105,8 +95,6 @@ class ParkingService {
     }
   }
 
-
-  // Producer: Enqueue the parking transaction
   async parkVehicle(vehicleId, type) {
     const transaction = {
       vehicleId,
@@ -134,6 +122,25 @@ class ParkingService {
       console.error('Failed to enqueue transaction:', error);
       return { success: false, message: 'Failed to queue transaction', error: error.message };
     }
+  }
+
+  // Get parking availability
+  getAvailability() {
+    const availability = {};
+    this.parkingLot.floors.forEach((floor) => {
+      availability[floor.level] = floor.spots.reduce((acc, spot) => {
+        if (!spot.isOccupied) {
+          acc[spot.type] = (acc[spot.type] || 0) + 1;
+        }
+        return acc;
+      }, {});
+    });
+
+    return {
+      success: true,
+      message: 'Parking availability fetched successfully.',
+      data: availability,
+    };
   }
 }
 

@@ -1,42 +1,51 @@
-const amqp = require('amqplib/callback_api');
 const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
 const bodyParser = require('body-parser');
-const routes = require('./routes');
+const cors = require('cors');
+const ParkingService = require('./services/parkingService');
+const parkingRouter = require('./routes'); // Parking router
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: '*', // Allow all origins (configure as needed)
+  },
+});
 
+// Middleware
+app.use(cors());
 app.use(bodyParser.json());
-app.use('/api/parking', routes);
 
-app.listen(3001, async () => {
-  
-  console.log('Parking service is running on port 3001');
+// Initialize ParkingService with WebSocket
+const amqpUrl = process.env.RABBITMQ_URL || 'amqp://localhost';
+const parkingLot = require('./database/parkingLotData'); // Load the parking lot data
+const parkingService = new ParkingService(parkingLot, amqpUrl, io);
 
-//   // Initialize RabbitMQ Channel
-//   amqp.connect('amqp://localhost', function(error0, connection) {
-//   if (error0) {
-//     throw error0;
-//   }
-//   connection.createChannel(function(error1, channel) {
-//     if (error1) {
-//       throw error1;
-//     }
+(async () => {
+  try {
+    await parkingService.initializeRabbitMQ();
+    console.log('Parking service connected to RabbitMQ.');
+  } catch (error) {
+    console.error('Failed to initialize ParkingService:', error);
+  }
+})();
 
-//     // Define queues
-//     const queues = ['parkingtransactions', 'paymentsqueue'];
+// Pass parkingService to the router
+app.use('/api/parking', parkingRouter(parkingService));
 
-//     // Define a message for each queue
-//     const messages = {
-//       parkingtransactions: 'Parking transaction message',
-//       paymentsqueue: 'Payment processing messages',
-//     };
+// WebSocket connection handler
+io.on('connection', (socket) => {
+  console.log('Dashboard connected:', socket.id);
 
-//     // Create and send messages to each queue
-//     queues.forEach((queue) => {
-//       channel.assertQueue(queue, { durable: true });
-//       channel.sendToQueue(queue, Buffer.from(messages[queue]));
-//       console.log(` [x] Sent message to ${queue}: ${messages[queue]}`);
-//     });
-//   });
-// });
+  socket.on('disconnect', () => {
+    console.log('Dashboard disconnected:', socket.id);
+  });
+});
+
+// Start the server
+const PORT = process.env.PORT || 3001;
+server.listen(PORT, () => {
+  console.log(`Parking service is running on port ${PORT}!`);
 });

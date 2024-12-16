@@ -35,9 +35,7 @@ This approach ensures a robust, scalable, and responsive system capable of handl
 
 1. **Adopt Microservices Architecture**: Implement a microservices-based design to ensure each service adheres to the principle of single responsibility. This modular approach enhances maintainability, fault isolation, and the ability to scale individual components independently.
 
-2. **Secure API Gateway**: Place all services behind an API Gateway to act as a single entry point for external requests. Incorporate robust authentication and authorization mechanisms, such as access tokens, to secure routes and protect sensitive operations.
-
-3. **Leverage RabbitMQ for Asynchronous Processing**:
+2. **Leverage RabbitMQ for Asynchronous Processing**:
    - Introduce a queuing system using RabbitMQ to handle transactions reliably and decouple services.
    - Enable horizontal scaling by deploying multiple consumer instances to process transactions in parallel, ensuring scalability during peak loads.
    - Allow the parking service to operate independently of the payment service by queuing transactions, ensuring that a failed payment does not block parking operations.
